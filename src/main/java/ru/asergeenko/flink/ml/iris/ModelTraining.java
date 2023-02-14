@@ -10,10 +10,8 @@ import com.alibaba.alink.pipeline.nlp.Segment;
 import com.alibaba.alink.pipeline.nlp.StopWordsRemover;
 import org.apache.flink.api.java.ExecutionEnvironment;
 
-public class App {
+public class ModelTraining {
     public static void main(String[] args) throws Exception {
-
-        ExecutionEnvironment env = ExecutionEnvironment.getExecutionEnvironment();
 
         CsvSourceBatchOp trainingSet = new CsvSourceBatchOp()
                 .setFilePath("src/main/resources/train.csv")
@@ -25,7 +23,7 @@ public class App {
                 .setSchemaStr("text string, label int")
                 .setIgnoreFirstLine(true);
 
-        //trainingSet.firstN(5).print();
+        trainingSet.firstN(5).print();
 
         Pipeline pipeline = new Pipeline(
                 new Imputer()
@@ -49,8 +47,8 @@ public class App {
 
         PipelineModel model = pipeline.fit(trainingSet);
         model.save("src/main/resources/model");
-        PipelineModel modelDes = PipelineModel.load("src/main/resources/model");
-        modelDes.transform(validationSet.firstN(100))
+
+        model.transform(validationSet.firstN(100))
                 .select(new String[]{"text", "label", "pred"})
                 .firstN(5)
                 .print();
