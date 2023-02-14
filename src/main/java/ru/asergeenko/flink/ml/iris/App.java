@@ -1,25 +1,57 @@
 package ru.asergeenko.flink.ml.iris;
 
-import org.apache.flink.api.java.DataSet;
+import com.alibaba.alink.operator.batch.source.CsvSourceBatchOp;
+import com.alibaba.alink.pipeline.Pipeline;
+import com.alibaba.alink.pipeline.PipelineModel;
+import com.alibaba.alink.pipeline.classification.LogisticRegression;
+import com.alibaba.alink.pipeline.dataproc.Imputer;
+import com.alibaba.alink.pipeline.nlp.DocCountVectorizer;
+import com.alibaba.alink.pipeline.nlp.Segment;
+import com.alibaba.alink.pipeline.nlp.StopWordsRemover;
 import org.apache.flink.api.java.ExecutionEnvironment;
-import org.apache.flink.graph.Graph;
-import org.apache.flink.graph.Vertex;
-import org.apache.flink.graph.library.LabelPropagation;
-import org.apache.flink.types.NullValue;
 
 public class App {
     public static void main(String[] args) throws Exception {
 
         ExecutionEnvironment env = ExecutionEnvironment.getExecutionEnvironment();
 
-        // Read graph
-        Graph<Integer, NullValue, NullValue> socialGraph = Graph.fromCsvReader("src/main/resources/facebook_combined.csv", env).keyType(Integer.class);
-        socialGraph.getVertices().print();
-        socialGraph.getEdges().print();
+        CsvSourceBatchOp trainingSet = new CsvSourceBatchOp()
+                .setFilePath("src/main/resources/train.csv")
+                .setSchemaStr("text string, label int")
+                .setIgnoreFirstLine(true);
 
-        // Community Detection
-        DataSet<Vertex<Integer, NullValue>> communities = socialGraph.run(new LabelPropagation<Integer, NullValue, NullValue>(50));
-        communities.print();
+        CsvSourceBatchOp validationSet = new CsvSourceBatchOp()
+                .setFilePath("src/main/resources/valid.csv")
+                .setSchemaStr("text string, label int")
+                .setIgnoreFirstLine(true);
+
+        //trainingSet.firstN(5).print();
+
+        Pipeline pipeline = new Pipeline(
+                new Imputer()
+                        .setSelectedCols("text")
+                        .setOutputCols("featureText")
+                        .setStrategy("value")
+                        .setFillValue("null"),
+                new Segment()
+                        .setSelectedCol("featureText"),
+                new StopWordsRemover()
+                        .setSelectedCol("featureText"),
+                new DocCountVectorizer()
+                        .setFeatureType("TF")
+                        .setSelectedCol("featureText")
+                        .setOutputCol("featureVector"),
+                new LogisticRegression()
+                        .setVectorCol("featureVector")
+                        .setLabelCol("label")
+                        .setPredictionCol("pred")
+        );
+
+        PipelineModel model = pipeline.fit(trainingSet);
+        model.transform(validationSet.firstN(100))
+                .select(new String[]{"text", "label", "pred"})
+                .firstN(5)
+                .print();
 
     }
 }
