@@ -48,7 +48,9 @@ public class App {
         );
 
         PipelineModel model = pipeline.fit(trainingSet);
-        model.transform(validationSet.firstN(100))
+        model.save("src/main/resources/model");
+        PipelineModel modelDes = PipelineModel.load("src/main/resources/model");
+        modelDes.transform(validationSet.firstN(100))
                 .select(new String[]{"text", "label", "pred"})
                 .firstN(5)
                 .print();
