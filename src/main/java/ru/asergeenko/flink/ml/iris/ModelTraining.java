@@ -8,7 +8,6 @@ import com.alibaba.alink.pipeline.dataproc.Imputer;
 import com.alibaba.alink.pipeline.nlp.DocCountVectorizer;
 import com.alibaba.alink.pipeline.nlp.Segment;
 import com.alibaba.alink.pipeline.nlp.StopWordsRemover;
-import org.apache.flink.api.java.ExecutionEnvironment;
 
 public class ModelTraining {
     public static void main(String[] args) throws Exception {
